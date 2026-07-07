@@ -1,0 +1,33 @@
+<intent-filter>
+    <action android:name="android.intent.action.VIEW" />
+    <category android:name="android.intent.category.DEFAULT" />
+    <category android:name="android.intent.category.BROWSABLE" />
+    <data android:scheme="http" />
+    <data android:scheme="https" />
+    <data android:host="ay.live" />
+    <data android:host="www.ay.live" />
+    <data android:host="aylink.co" />
+    <data android:host="www.aylink.co" />
+    <data android:host="cpmlink.pro" />
+    <data android:host="www.cpmlink.pro" />
+    <data android:host="bildirim.online" />
+    <data android:host="bildirim.vip" />
+    <data android:host="ouo.io" />
+    <data android:host="ouo.press" />
+    <data android:host="tulink.fun" />
+    <data android:host="lnk.news" />
+    <data android:host="exe.io" />
+    <data android:host="exey.io" />
+    <data android:host="fc.lc" />
+    <data android:host="fc-lc.xyz" />
+    <data android:host="bc.vc" />
+    <data android:host="shorte.st" />
+    <data android:host="clk.sh" />
+    <data android:host="shrinke.me" />
+    <data android:host="linkvertise.com" />
+</intent-filter>
+<intent-filter>
+    <action android:name="android.intent.action.SEND" />
+    <category android:name="android.intent.category.DEFAULT" />
+    <data android:mimeType="text/plain" />
+</intent-filter>
