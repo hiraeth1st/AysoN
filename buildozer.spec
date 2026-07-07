@@ -17,7 +17,7 @@ android.minapi = 28
 android.ndk = 25b
 android.archs = arm64-v8a
 android.numeric_version = 25
-p4a.branch = master
+p4a.branch = develop
 
 [buildozer]
 log_level = 2
