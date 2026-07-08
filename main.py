@@ -20,12 +20,6 @@ from kivy.uix.textinput import TextInput
 
 from ayson_core import VERSION, resolve_url, resolve_url_details
 
-WEBVIEW_REQUIRED_PREFIX = "__WEBVIEW_REQUIRED__:"
-try:
-    from webview_resolver import HiddenWebViewResolver
-except Exception:
-    HiddenWebViewResolver = None
-
 
 BG = (0.045, 0.047, 0.065, 1)
 CARD = (0.085, 0.090, 0.125, 1)
@@ -231,9 +225,6 @@ class AysonApp(App):
         self.last_result = ""
         self.last_input = ""
         self.open_target = ""
-        self.hidden_webview_resolver = None
-        self.webview_debug = ""
-        self.visible_webview_started = False
         self.history = []
         self.history_query = ""
         self.store = JsonStore("ayson_history.json")
@@ -475,22 +466,6 @@ class AysonApp(App):
             + current_url
         )
 
-    def is_manual_intermediate_result(self, url):
-        try:
-            from urllib.parse import urlparse
-            host = (urlparse(url).hostname or "").lower().removeprefix("www.")
-        except Exception:
-            host = ""
-        return host in {
-            "lnk.news",
-            "tulink.fun",
-            "link.tl",
-            "ouo.io",
-            "ouo.press",
-            "bildirim.online",
-            "bildirim.vip",
-        }
-
     def _show_success(self, result):
         self.is_solving = False
         self.solve_btn.text = "Coz"
@@ -504,21 +479,6 @@ class AysonApp(App):
 
         self.last_result = final
 
-        if isinstance(final, str) and final.startswith(WEBVIEW_REQUIRED_PREFIX):
-            web_url = final[len(WEBVIEW_REQUIRED_PREFIX):].strip()
-            self.last_result = web_url
-            self.set_open_button(web_url)
-            self.output.text = (
-                "lnk.news kapisi bulundu.\n\n"
-                "Gorunur WebView aciliyor...\n"
-                "Robot/yesil buton cikarsa sen bas.\n"
-                "Reklam acilmaya calisirsa uygulama yok sayacak.\n\n"
-                + web_url
-            )
-            self.set_status("Gorunur WebView", WARNING)
-            self.start_hidden_webview_resolver(web_url)
-            return
-
         if chain:
             lines = ["Sonuc:", final, "", "Zincir:"]
             for idx, item in enumerate(chain, 1):
@@ -527,33 +487,9 @@ class AysonApp(App):
         else:
             self.output.text = self.last_result
 
-        if self.is_manual_intermediate_result(self.last_result):
-            self.set_status("Manuel devam gerekli", WARNING)
-            if chain:
-                lines = [
-                    "Ara link bulundu:",
-                    self.last_result,
-                    "",
-                    "Bu link Link.TL / reklam / Cloudflare kapisinda kaldi.",
-                    "Ac butonuna basip tarayicida devam et.",
-                    "",
-                    "Zincir:",
-                ]
-                for idx, item in enumerate(chain, 1):
-                    lines.append(f"{idx}. {item}")
-                self.output.text = "\n".join(lines)
-            else:
-                self.output.text = (
-                    "Ara link bulundu:\n"
-                    + self.last_result
-                    + "\n\nAc butonuna basip tarayicida devam et."
-                )
-            self.set_open_button(self.last_result)
-            self._add_history(self.last_input, self.last_result, "manual")
-        else:
-            self.set_status("Cozuldu", SUCCESS)
-            self.set_open_button(self.last_result)
-            self._add_history(self.last_input, self.last_result, "success")
+        self.set_status("Cozuldu", SUCCESS)
+        self.set_open_button(self.last_result)
+        self._add_history(self.last_input, self.last_result, "success")
 
     def _show_error(self, message, source_url):
         self.is_solving = False
@@ -944,107 +880,6 @@ class AysonApp(App):
             popup.dismiss()
 
         self.set_status("Etiket kaydedildi" if new_tag else "Etiket silindi", SUCCESS)
-
-
-    def start_hidden_webview_resolver(self, url):
-        # Eski isim kalsin diye method adini degistirmiyoruz.
-        # Artik gizli WebView yok; hiz icin direkt gorunur WebView acilir.
-        url = (url or "").strip()
-        if not url:
-            self.set_status("WebView link yok", ERROR)
-            return
-        if HiddenWebViewResolver is None:
-            self.output.text += "\n\nHiddenWebViewResolver yuklenemedi."
-            self.set_status("WebView yok", ERROR)
-            return
-
-        self.visible_webview_started = True
-        self.last_result = url
-        self.set_open_button(url)
-        self.output.text = (
-            "lnk.news kapisi bulundu.\n\n"
-            "Gorunur WebView aciliyor.\n"
-            "Robot/yesil buton cikarsa sen bas.\n"
-            "Reklam acilmaya calisirsa uygulama yok sayacak.\n"
-            "Final link gorunur gorunmez ekrana yazilip gecmise kaydedilecek.\n\n"
-            + url
-        )
-        self.set_status("Gorunur WebView", WARNING)
-
-        try:
-            self.hidden_webview_resolver = HiddenWebViewResolver(self, url, timeout_seconds=120)
-            if hasattr(self.hidden_webview_resolver, "start_visible"):
-                self.hidden_webview_resolver.start_visible()
-            else:
-                self.hidden_webview_resolver.start()
-        except Exception as exc:
-            self.output.text += "\n\nGorunur WebView baslatilamadi:\n" + str(exc)
-            self.set_status("WebView hata", ERROR)
-
-    def on_hidden_webview_success(self, final_url, source_url):
-        final_url = (final_url or "").strip()
-        source_url = (source_url or "").strip()
-        if not final_url:
-            self.on_hidden_webview_failed(source_url)
-            return
-
-        self.last_result = final_url
-        self.open_target = final_url
-        self.output.text = (
-            "Sonuc:\n"
-            + final_url
-            + "\n\nOtomatik WebView resolver ile yakalandi ve gecmise kaydedildi."
-        )
-        self.set_status("Cozuldu", SUCCESS)
-        self.set_open_button(final_url)
-        self._add_history(source_url or self.last_input, final_url, "web-auto")
-
-    def on_hidden_webview_failed(self, source_url):
-        source_url = (source_url or self.last_result or "").strip()
-        self.last_result = source_url
-        self.output.text = (
-            "Ara link bulundu:\n"
-            + source_url
-            + "\n\nWebView final linki yakalayamadi.\n"
-            "Ac butonuyla tarayicida manuel devam etmen gerekebilir."
-        )
-        self.set_status("Manuel devam gerekli", WARNING)
-        self.set_open_button(source_url)
-        self._add_history(self.last_input, source_url, "manual")
-
-    def on_hidden_webview_progress(self, source_url, ticks):
-        source_url = (source_url or "").strip()
-        try:
-            sec = int(ticks)
-        except Exception:
-            sec = 0
-        mode_text = (
-            "Gorunur WebView acik. Robot/yesil buton cikarsa sen bas.\n"
-            if self.visible_webview_started
-            else "Gizli WebView resolver otomatik calisiyor...\nJS sayaci bekleniyor, buton otomatik tiklanacak, reklam sekmesi yok sayilacak.\n"
-        )
-        self.output.text = (
-            "lnk.news kapisi bulundu.\n\n"
-            + mode_text
-            + "\nBekleme: "
-            + str(sec)
-            + " sn\n"
-            + (self.webview_debug or "")
-            + "\n\n"
-            + source_url
-        )
-
-    def on_hidden_webview_debug(self, message):
-        message = str(message or "").strip()
-        if not message:
-            return
-        self.webview_debug = message
-
-    def on_hidden_webview_error(self, message):
-        message = str(message or "")
-        self.output.text += "\n\n" + message
-        self.set_status("WebView hata", ERROR)
-
 
 
 if __name__ == "__main__":
